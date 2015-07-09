@@ -1,0 +1,10 @@
+.DS_Store
+*.pyc
+*.egg
+*.egg-info
+.coverage
+docs/_build
+build/
+dist/
+.eggs/
+MANIFEST
