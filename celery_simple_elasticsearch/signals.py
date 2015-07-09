@@ -28,6 +28,5 @@ class CelerySignalProcessor(object):
         """
 
         if isinstance(instance, CelerySearchIndex):
-            if action == 'update' and not instance.should_index(instance):
-                continue
-            enqueue_task(action, instance)
+            if instance.should_index(instance):
+                enqueue_task(action, instance)
