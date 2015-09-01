@@ -62,12 +62,17 @@ class CelerySearchIndex(object):
     @classmethod
     def enqueue_save(cls, instance, **kwargs):
         if cls.should_index(instance):
-            return cls.enqueue('update', instance)
+            return cls.enqueue(cls.index_add, instance)
 
     @classmethod
     def enqueue_delete(cls, instance, **kwargs):
         if cls.should_index(instance):
-            return cls.enqueue('delete', instance)
+            return cls.enqueue(cls.index_delete, instance)
+
+    @classmethod
+    def enqueue_action(cls, action, instance, **kwargs):
+        if cls.should_index(instance):
+            return cls.enqueue(action, instance)
 
     @classmethod
     def enqueue(cls, action, instance):

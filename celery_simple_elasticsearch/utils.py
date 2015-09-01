@@ -1,6 +1,6 @@
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.importlib import import_module
-from django.db import connection
+from django.db import connection, transaction
 
 from .conf import settings
 
@@ -28,7 +28,17 @@ def enqueue_task(action, instance):
     Common utility for enqueing a task for the given action and
     model instance.
     """
-    identifier = instance.get_identifier(instance)
+    def submit_task():
+        if transaction.is_managed():
+            with transaction.atomic():
+                # TODO: Fix this not returning on CMS page edit
+                task.apply_async((action, identifier), {}, **kwargs)
+        else:
+            task.apply_async((action, identifier), {}, **kwargs)
+
+    action = get_method_identifier(action)
+    identifier = get_object_identifier(instance)
+
     kwargs = {}
     if settings.CELERY_SIMPLE_ELASTICSEARCH_QUEUE:
         kwargs['queue'] = settings.CELERY_SIMPLE_ELASTICSEARCH_QUEUE
@@ -37,7 +47,31 @@ def enqueue_task(action, instance):
     task = get_update_task()
     if hasattr(connection, 'on_commit'):
         connection.on_commit(
-            lambda: task.apply_async((action, identifier), {}, **kwargs)
+                lambda: submit_task()
         )
     else:
-        task.apply_async((action, identifier), {}, **kwargs)
+        submit_task()
+
+
+def get_object_identifier(obj):
+    """
+    This function will provide a dot notated reference to the
+    item to identify.
+    """
+    return u'{}.{}.{}'.format(
+        obj._meta.app_label,
+        obj.__class__.__name__,
+        obj.id
+    )
+
+
+def get_method_identifier(identify):
+    """
+    This function provides a dot notated reference to a bound
+    function
+    """
+    return u'{}.{}.{}'.format(
+        identify.im_self._meta.app_label,
+        identify.im_self.__name__,
+        identify.im_func.__name__
+    )
