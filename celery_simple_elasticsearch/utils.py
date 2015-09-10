@@ -29,12 +29,11 @@ def enqueue_task(action, instance):
     model instance.
     """
     def submit_task():
-        if transaction.is_managed():
+        if transaction.is_dirty():
             with transaction.atomic():
-                # TODO: Fix this not returning on CMS page edit
-                task.apply_async((action, identifier), {}, **kwargs)
+                task.delay(action, identifier)
         else:
-            task.apply_async((action, identifier), {}, **kwargs)
+            task.delay(action, identifier)
 
     action = get_method_identifier(action)
     identifier = get_object_identifier(instance)
