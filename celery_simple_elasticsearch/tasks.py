@@ -97,7 +97,7 @@ class CelerySimpleElasticSearchSignalHandler(Task):
             # We assume that just means this isn't a Django model - try
             # loading it as a module:
             action_class = import_module(action_class_string)
-        logger.error('action_class: {}'.format(action_class))
+
         action_method = getattr(action_class, action_method_string, None)
 
         if not action_method:
