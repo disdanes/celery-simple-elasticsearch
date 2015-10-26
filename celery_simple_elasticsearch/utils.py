@@ -23,20 +23,23 @@ def get_update_task(task_path=None):
     return Task()
 
 
-def enqueue_task(action, instance):
+def enqueue_task(action, instance, instantiator=None):
     """
     Common utility for enqueing a task for the given action and
-    model instance.
+    model instance. Optionally provide an instantiator that handles
+    instance instantiation.
     """
     def submit_task():
         if transaction.get_connection().in_atomic_block:
             with transaction.atomic():
-                task.delay(action, identifier)
+                task.delay(action, identifier, instantiator)
         else:
-            task.delay(action, identifier)
+            task.delay(action, identifier, instantiator)
 
     action = get_method_identifier(action)
     identifier = get_object_identifier(instance)
+    if instantiator:
+        instantiator = get_method_identifier(instantiator)
 
     kwargs = {}
     if settings.CELERY_SIMPLE_ELASTICSEARCH_QUEUE:

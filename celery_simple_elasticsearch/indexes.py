@@ -60,6 +60,21 @@ class CelerySearchIndex(object):
         )
 
     @classmethod
+    def instantiate_deleted_instance(cls, model_class, pk):
+        """
+        This specialized instantiation method is used to handle
+        instances where we're deleting an instance from the index,
+        and the actual instance is already gone from the db
+        """
+        class deleted_instance(object):
+            pass
+
+        deleted = deleted_instance()
+        deleted.pk = pk
+
+        return deleted
+
+    @classmethod
     def enqueue_save(cls, instance, **kwargs):
         if cls.should_index(instance):
             return cls.enqueue(cls.index_add, instance)
@@ -67,7 +82,11 @@ class CelerySearchIndex(object):
     @classmethod
     def enqueue_delete(cls, instance, **kwargs):
         if cls.should_index(instance):
-            return cls.enqueue(cls.index_delete, instance)
+            return cls.enqueue(
+                cls.index_delete,
+                instance,
+                cls.instantiate_deleted_instance
+            )
 
     @classmethod
     def enqueue_action(cls, action, instance, **kwargs):
@@ -75,7 +94,7 @@ class CelerySearchIndex(object):
             return cls.enqueue(action, instance)
 
     @classmethod
-    def enqueue(cls, action, instance):
+    def enqueue(cls, action, instance, instantiator=None):
         """
         Shoves a message about how to update the index into the queue.
 
@@ -84,5 +103,8 @@ class CelerySearchIndex(object):
             ``notes.note.23``
             # ...or...
             ``weblog.entry.8``
+
+        The instantiator is an optional method which will handle instance
+        instantiation.
         """
-        return enqueue_task(action, instance)
+        return enqueue_task(action, instance, instantiator)
