@@ -29,7 +29,7 @@ def enqueue_task(action, instance):
     model instance.
     """
     def submit_task():
-        if transaction.is_dirty():
+        if transaction.get_connection().in_atomic_block:
             with transaction.atomic():
                 task.delay(action, identifier)
         else:
