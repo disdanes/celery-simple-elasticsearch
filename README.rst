@@ -57,7 +57,7 @@ Usage
 Thanks
 ------
 
-This app is a blatant rip-off of `Celery Haystack`. A great basis,
+This app is a blatant rip-off of `Celery Haystack`_. A great basis,
 but I didn't want Haystack users to have all the celery goodness
 to themselves.
 
