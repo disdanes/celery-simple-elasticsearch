@@ -38,6 +38,28 @@ class CelerySimpleElasticSearchSignalHandler(Task):
         object_path = '.'.join(bits[:-1])
         return (object_path, pk)
 
+    def get_method(self, method_identifier):
+        """
+        Given a method identifier, return the method
+        """
+        class_string, method_string = method_identifier.rsplit('.', 1)
+
+        try:
+            class_obj = self.get_model_class(class_string)
+        except ImproperlyConfigured:
+            # We assume that just means this isn't a Django model - try
+            # loading it as a module:
+            class_obj = import_module(class_string)
+
+        method = getattr(class_obj, method_string, None)
+
+        if not method:
+            msg = 'Could not get method from "{}"'.format(method_identifier)
+            logger.error(msg)
+            raise ValueError(msg)
+
+        return method
+
     def get_model_class(self, object_path, **kwargs):
         """
         Fetch the model's class in a standarized way.
@@ -66,9 +88,10 @@ class CelerySimpleElasticSearchSignalHandler(Task):
                           model_class._meta.object_name.lower(), pk))
         except model_class.MultipleObjectsReturned:
             logger.error("More than one object with pk %s. Oops?" % pk)
+
         return instance
 
-    def run(self, action, identifier, **kwargs):
+    def run(self, action, identifier, instantiator=None, **kwargs):
         """
         Trigger the actual index handler depending on the
         given action.
@@ -82,28 +105,20 @@ class CelerySimpleElasticSearchSignalHandler(Task):
 
         # Then get the model class for the object path
         model_class = self.get_model_class(object_path, **kwargs)
-        instance = self.get_instance(model_class, pk)
+
+        if instantiator:
+            instantiator_method = self.get_method(instantiator)
+        else:
+            instantiator_method = self.get_instance
+
+        instance = instantiator_method(model_class, pk)
 
         if hasattr(model_class, 'get_index_name'):
             current_index_name = model_class.get_index_name()
         else:
             current_index_name = settings.ELASTICSEARCH_INDEX
 
-        # Now load up the action:
-        action_class_string, action_method_string = action.rsplit('.', 1)
-        try:
-            action_class = self.get_model_class(action_class_string)
-        except ImproperlyConfigured:
-            # We assume that just means this isn't a Django model - try
-            # loading it as a module:
-            action_class = import_module(action_class_string)
-
-        action_method = getattr(action_class, action_method_string, None)
-
-        if not action_method:
-            msg = 'Could not get action method from "{}"'.format(action)
-            logger.error(msg)
-            raise ValueError(msg)
+        action_method = self.get_method(action)
 
         try:
             action_method(instance)
