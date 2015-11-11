@@ -1,5 +1,4 @@
 from django.conf import settings  # noqa
-from simple_elasticsearch.management.commands import es_manage as cmd
 from appconf import AppConf
 
 
@@ -38,10 +37,10 @@ class CelerySimpleElasticSearch(AppConf):
         return value or getattr(self, 'DEFAULT_ALIAS', None)
 
     def configure_command_batch_size(self, value):
-        return value or getattr(cmd, 'DEFAULT_BATCH_SIZE', None)
+        return value or getattr(self, 'DEFAULT_BATCH_SIZE', None)
 
     def configure_command_age(self, value):
-        return value or getattr(cmd, 'DEFAULT_AGE', None)
+        return value or getattr(self, 'DEFAULT_AGE', None)
 
     def configure(self):
         data = {}
